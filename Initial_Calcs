@@ -1,0 +1,150 @@
+import numpy as np
+from numpy import pi
+import math
+from sympy.solvers import solve
+from sympy import Symbol
+from scipy.optimize import fsolve
+
+
+V_vert = 0.0763943727 #based on 600mL flow rate [m/s]
+sec_a = 1.0329 #sec(14.5) for calculating required screw torque
+sin_2_20 = 0.1169777784 #sin(20)^2 for calculating smallest # of teeth
+sqrt = np.sqrt
+area_chamber = pi*(0.05**2)
+price = 3.95+26+31.27+2.14
+
+print("choose powerscrew option:")
+powerscrew = input()
+
+#powerscrew option 1, 5/8"-6 x 12" $4.20
+if powerscrew == "1":
+    lead = 0.0042418  #travel distance per turn (from mcmaster) [m]
+    dm =  0.012996 #mean diameter [m]
+    cost = 4.20
+    print("\nlead:",lead,"meters")
+    print("mean diameter:",dm,"meters")
+    print("cost:",cost,"dollars")
+
+#powerscrew option 2, 1/4"-16 x 12" $3.95
+elif powerscrew == "2":
+    lead = 0.00160866666666658188 #travel distance per turn (from mcmaster) [meters]
+    dm = 0.00594995 #mean diameter [meters]
+    cost = 3.95
+    print("lead:",lead,"meters")
+    print("mean diameter:",dm,"meters")
+    print("cost:",cost,"dollars")
+
+print("\nfriction for lubricated steel is between 0.11 and 0.17, please input a value:")
+fric = float(input())
+
+t_screw = 39269.908*V_vert/2.*dm*(lead+(pi*fric*dm*sec_a))/((pi*dm)-(fric*sec_a*lead))
+print("\nScrew torque: ",t_screw,"Nm")
+
+rpm_screw = 60*V_vert/lead
+w_screw = (rpm_screw*pi/30.)
+print("\nScrew Angular velocity is: ",w_screw,"rad/s")
+
+power = t_screw*w_screw
+print("\nPower in/output is:",power,"Watts")
+
+coeff = [-0.000104719755, 0.5235987756, -power] #using quadratic solver to find w_in
+rpm_in_temp = np.roots(coeff)
+rpm_motor_1 = rpm_in_temp[0] #quadratic solver returns both roots
+rpm_motor_2 = rpm_in_temp[1]
+
+#following is for rpm 1
+print("\n\n***********FIRST OPTION***************\nFor rmp =",rpm_motor_1,"the following calculations are made:")
+t_motor_1 = (-0.001*(rpm_motor_1))+5 #finding the corresponding motor torque from the given motor graph
+w_motor_1 = pi*rpm_motor_1/30.
+print("\nMotor angular velociy is: ",w_motor_1, "rad/s")
+print("\nMotor torque is: ",t_motor_1, "Nm")
+
+train_1 = w_screw/w_motor_1
+print("\nThe required train value is: ",train_1)
+
+m_1 = train_1
+Np_1 = math.ceil((2/((1.+2.*m_1)*sin_2_20))*(m_1+sqrt(m_1**2.+(1.+2.*m_1)*sin_2_20))) #plug equation for Np and round up
+print("\nThe smallest number of teeth on the pinion is: ",Np_1) 
+
+Ng_1 = Np_1/train_1
+Ng_big_1 = math.ceil(Ng_1)
+Ng_small_1 = math.floor(Ng_1)
+
+print("\nThe required number of teeth on the gear are either: ",Ng_small_1,"or",Ng_big_1)
+
+
+
+#following is for rpm 2
+print("\n\n***********SECOND OPTION***************\nFor rmp =",rpm_motor_2,"the following calculations are made:")
+t_motor_2 = (-0.001*(rpm_motor_2))+5 #finding the corresponding motor torque from the given motor graph
+w_motor_2 = pi*rpm_motor_2/30.
+print("\nMotor angular velociy is: ",w_motor_2, "rad/s")
+print("\nMotor torque is: ",t_motor_2, "Nm")
+
+train_2 = w_screw/w_motor_2
+print("\nThe required train value is: ",train_2)
+
+m_2 = train_2
+Np_2 = math.ceil((2/((1.+2.*m_2)*sin_2_20))*(m_2+sqrt(m_2**2.+(1.+2.*m_2)*sin_2_20))) #plug equation for Np and round up
+print("\nThe smallest number of teeth on the pinion is: ",Np_2) 
+
+Ng_2 = Np_2/train_2
+Ng_big_2 = math.ceil(Ng_2)
+Ng_small_2 = math.floor(Ng_2)
+
+print("\nThe required number of teeth on the gear are either: ",Ng_small_2,"or",Ng_big_2)
+
+print("\n\n*****************************\nChoose the first or second option:")
+option = input()
+
+if option == "first":
+    rpm_motor = rpm_motor_1
+    t_motor = t_motor_1
+    w_motor = w_motor_1
+    train = train_1
+    m = m_1
+    Np = Np_1
+    Ng_small = Ng_small_1
+
+
+elif option == "second":
+    rpm_motor = rpm_motor_2
+    t_motor = t_motor_2
+    w_motor = w_motor_2
+    train = train_2
+    m = m_2
+    Np = Np_2
+    Ng_small = Ng_small_2
+
+
+
+    
+print("\nPINION\n")
+print("\nPitch Diameter [inches]: ")
+p_diam_1 = float(input())
+print("\nNum of teeth: ")
+num_teeth_1 = int(input())
+    
+print("\nPINION\n")
+print("\nPitch Diameter [inches]: ")
+p_diam_2 = float(input())
+print("\nNum of teeth: ")
+num_teeth_2 = int(input())
+
+train = num_teeth_1/num_teeth_2
+t_screw = t_motor/train
+w_screw = power/t_screw
+    
+rpm_screw = w_screw*30./pi
+    
+screw_velocity = rpm_screw*lead/60.
+flow_rate = area_chamber*screw_velocity*10.**6.
+    
+perf = flow_rate/price
+    
+print("\nTrain: ", train)
+print("\nScrew torque: ", t_screw)
+print("\nScrew angular vel: ",w_screw)
+print("\nScrew vertical velocity (real): ", screw_velocity)
+print("\nFlow rate: ",flow_rate)
+print("\nPerformance coeff: ",perf)
