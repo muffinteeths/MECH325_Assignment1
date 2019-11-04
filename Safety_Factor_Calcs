@@ -1,0 +1,96 @@
+import numpy as np
+import math
+print("THIS IS GEAR FoS\n")
+
+#***********************************NEED TO CHANGE BASED ON GEAR********************************
+T = 4.334             # N-m, input torque on gear/pinion
+N = 15                          # number of teeth
+F = 1                         # in, face width of gear
+dp = 1.25                        # in, pitch diameter
+bore_diam = 5/8                 # in
+Hb =  130                        # Brinell Hardness
+J = 0.25                        # geometry factor = 0.25 for 15 tooth pinion, 0.31 for 20 tooth gear. Fig 14-6
+Ng = 15                         # gear teeth
+Np = 12                         # pinion teeth
+
+
+
+
+Wt = 2*T/dp                     # transmitted load
+Pd = N/dp                       # diametral pitch
+T = T / 0.11298482933333        # lb-in
+K0 = 1.25                       # overload factor from page 758 (figure 14-17)
+Ks = 1                          # size factor, 1 is typical value
+
+
+
+# rim thickness factor
+ht = 1/Pd + 1.25/Pd                       #tooth height
+tr = dp/2. - 1.25/Pd - bore_diam/2.         # rim thickness 
+
+
+
+if tr/ht >= 1.2:
+    Kb = 1 
+else:
+    Kb = 1.6*math.log(2.242/(tr/ht))
+
+
+# load distro. factor
+Cmc = 1                             # = 1 for uncrowned teeth
+Ce = 1                              # = 1 by default 
+Cpm = 1                             # pretty much a guess OR try 1.1
+Cpf = F/(10 * dp) - 0.025           # for F <= 1 in, dp = pitch diameter (in)
+A = 0.127 
+B = 0.0158 
+C = -0.93*10.**(-4)
+Cma = A + B*F + C*F**2              # table 14-9 for ABC, commerical enclosed
+Km = 1 + Cmc * (Cpf*Cpm + Cma*Ce)   # load distro factor
+
+# dynamic factor 
+Qv = 5                              # quality of gear material fig 14-9 between 3-7
+Bv = 0.25 * (12 - Qv)**(2/3) 
+Av = 50 + 56 * (1 - Bv) 
+Vt = (Av + (Qv - 3))**2 
+Kv = ((Av + np.sqrt(Vt)) / Av)**Bv# dynamic factor
+
+Cp = 2300                       # lb/in^2, elastic coeff. (assuming steel on steel pg. 749)
+Cf = 1                          # surface condition factor (pg. 750)
+phi = 20                        # pressure angle 
+mN = 1                          # = 1, for spur gears
+mG = Ng/Np 
+I = np.cos(np.deg2rad(phi))*np.sin(np.deg2rad(phi))*mG / (2*mN * (mG + 1))
+
+sig_bend = Wt*K0*Kv*Ks*Pd*Km*Kb/(F*J) 
+print("Bending stress:", round(sig_bend, 3),"\n") 
+
+sig_contact = Cp*np.sqrt(Wt*K0*Kv*Ks*Km*Cf/(dp*F*I))
+print("Contact stress:", round(sig_contact, 3))
+
+
+
+St = 77.3*Hb+12800              #Fig 14-2 assume grade 1 (more conservative) through-hardened steel [psi]
+Yn = 1.5                        #Fig 14-14 for bending stress-cycle factor (ours is 10^4 which Hb = 130) 
+Kr = 1.25                       #Table 14-10 for reliability 0.999
+Kt = 1.0                        #For up to 120 deg C
+
+
+sf_bend = St*Yn/(Kr*Kt*sig_bend)
+
+Sc = 322*Hb+29100               #Fig 14-5 grade 1 equation [psi]
+Zn = 1.4                        #Fig 14-15 pitting resistance 
+Ch = 1                          #14-13 use CH = 1 
+
+sf_contact = Sc*Zn*Ch/(Kt*Kr*sig_contact)
+
+print("\nBending Safety Factor:", round(sf_bend, 3),"\n") 
+
+print("Contact Safety Facotr:", round(sf_contact, 3))
+
+if sf_bend <= 2.0:
+    print("\nFAILED SF BEND")
+    
+if sf_contact <= 2.0:
+    print("\nFAILED SF CONTACT")
+    
+print("\nWt:",Wt,"Kv",Kv,"Km",Km,"Kb",Kb,"J",J,"I",I,"St",St,"\nSc",Sc,"Zn",Zn,"")
